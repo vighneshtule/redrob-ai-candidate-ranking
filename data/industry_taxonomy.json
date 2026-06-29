@@ -1,0 +1,74 @@
+{
+  "_meta": {
+    "description": "Industry taxonomy for classifying companies as product-company (positive), services/consulting (negative), or neutral.",
+    "generated": "2026-06-19",
+    "source": "job_description.docx + dataset analysis"
+  },
+  "product_company": {
+    "description": "Product companies — explicitly valued by JD. Score multiplier: 1.0",
+    "industries": [
+      "Software", "SaaS", "Fintech", "E-commerce",
+      "AI/ML", "AI Services", "HealthTech", "HealthTech AI",
+      "EdTech", "Gaming", "Conversational AI", "AdTech",
+      "Insurance Tech", "Transportation", "Food Delivery",
+      "Media Tech", "Cloud", "Cybersecurity", "PropTech",
+      "LegalTech", "RegTech"
+    ],
+    "typical_company_sizes": ["1-10", "11-50", "51-200", "201-500", "501-1000"],
+    "note": "Smaller product companies = startup experience = positive JD signal"
+  },
+  "it_services": {
+    "description": "IT services / outsourcing companies — explicitly flagged in JD as a negative signal.",
+    "score_multiplier": 0.5,
+    "industries": ["IT Services", "Consulting"],
+    "known_negative_companies": [
+      "tcs", "tata consultancy services",
+      "infosys",
+      "wipro",
+      "accenture",
+      "cognizant",
+      "capgemini",
+      "hcl", "hcl technologies",
+      "tech mahindra",
+      "mphasis",
+      "mindtree",
+      "ltimindtree", "l&t infotech", "lti",
+      "hexaware",
+      "zensar",
+      "persistent systems",
+      "cyient",
+      "niit technologies",
+      "mastech",
+      "igate",
+      "patni",
+      "kpit",
+      "birlasoft"
+    ],
+    "exception": "If candidate ALSO has prior product-company experience, consulting background is penalized but not vetoed"
+  },
+  "neutral_or_unclear": {
+    "description": "Industries that require further context (company name, size) to classify.",
+    "industries": [
+      "Conglomerate",
+      "Manufacturing",
+      "Paper Products",
+      "Retail",
+      "Banking",
+      "Telecom",
+      "Healthcare",
+      "Education",
+      "Government",
+      "Non-profit"
+    ],
+    "score_multiplier": 0.75,
+    "note": "These are not explicitly penalized, but are not preferred. Use company size and name as additional signals."
+  },
+  "classification_logic": {
+    "step_1": "Check industry field against product_company.industries → 1.0 multiplier",
+    "step_2": "Check industry field against it_services.industries → 0.5 multiplier",
+    "step_3": "Check company name against it_services.known_negative_companies → 0.4 multiplier (stronger penalty)",
+    "step_4": "If Conglomerate/Manufacturing etc. → 0.75 multiplier",
+    "step_5": "Adjust by company_size: '1-10'/'11-50' product company → extra +0.1; '10001+' at IT Services → extra -0.1",
+    "product_company_indicator": "If candidate has ANY role at a product company in career history, they get partial credit even if current role is at services firm"
+  }
+}

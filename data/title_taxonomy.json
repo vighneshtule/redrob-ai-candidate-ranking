@@ -1,0 +1,118 @@
+{
+  "_meta": {
+    "description": "Career title taxonomy for Redrob AI Senior AI Engineer JD. Maps job titles to relevance tiers.",
+    "generated": "2026-06-19",
+    "source": "job_description.docx + sample_candidates.json analysis"
+  },
+  "tier_1": {
+    "description": "Direct match to role. Score = 1.0. These ARE the target profile.",
+    "titles": [
+      "ml engineer", "machine learning engineer", "senior ml engineer",
+      "senior machine learning engineer", "staff ml engineer", "principal ml engineer",
+      "ai engineer", "senior ai engineer", "staff ai engineer",
+      "applied scientist", "applied research scientist",
+      "research engineer", "research scientist (applied)",
+      "nlp engineer", "senior nlp engineer", "nlp scientist",
+      "search engineer", "search ranking engineer", "ranking engineer",
+      "information retrieval engineer", "ir engineer",
+      "recommendation systems engineer", "recommender systems engineer",
+      "ai specialist", "ai researcher (applied)",
+      "ml infrastructure engineer", "ml platform engineer",
+      "founding engineer", "founding ml engineer",
+      "deep learning engineer", "senior deep learning engineer",
+      "llm engineer", "generative ai engineer",
+      "conversational ai engineer", "dialogue systems engineer",
+      "embedding engineer", "vector search engineer"
+    ]
+  },
+  "tier_2": {
+    "description": "Strong adjacent roles. Score = 0.65. Plausible career bridge to target role.",
+    "titles": [
+      "data scientist", "senior data scientist", "lead data scientist", "staff data scientist",
+      "principal data scientist", "chief data scientist",
+      "backend engineer", "senior backend engineer", "staff backend engineer",
+      "software engineer", "senior software engineer", "staff software engineer",
+      "software development engineer", "sde", "sde2", "sde3",
+      "platform engineer", "infrastructure engineer",
+      "full stack engineer", "senior full stack engineer",
+      "backend developer", "senior backend developer",
+      "python developer", "senior python developer",
+      "data engineer", "senior data engineer", "staff data engineer",
+      "analytics engineer", "senior analytics engineer"
+    ]
+  },
+  "tier_3": {
+    "description": "Weak adjacent roles. Score = 0.30. Possible but not likely fit.",
+    "titles": [
+      "software engineer ii", "software engineer iii",
+      "qa engineer", "sdet", "test engineer", "quality engineer",
+      "devops engineer", "sre", "site reliability engineer",
+      "cloud engineer", "platform engineer",
+      "frontend engineer", "front-end engineer", "ui engineer",
+      "java developer", ".net developer", "c# developer",
+      "mobile developer", "android developer", "ios developer",
+      "full stack developer", "web developer",
+      "data analyst", "senior data analyst",
+      "business intelligence engineer", "bi developer",
+      "solutions architect", "technical architect",
+      "product manager", "technical product manager",
+      "engineering manager"
+    ]
+  },
+  "tier_4": {
+    "description": "Negative signal for this role. Score = 0.0. These are explicitly NOT the target profile. JD warns against keyword stuffers with these titles.",
+    "titles": [
+      "marketing manager", "digital marketing manager", "performance marketing manager",
+      "content writer", "content creator", "copywriter", "technical writer",
+      "hr manager", "human resources manager", "talent acquisition manager", "recruiter",
+      "hr business partner", "hrbp", "people operations",
+      "graphic designer", "ux designer", "ui designer", "visual designer",
+      "sales executive", "account executive", "business development", "sales manager",
+      "account manager", "relationship manager",
+      "business analyst", "systems analyst", "functional analyst",
+      "project manager", "program manager", "pmo",
+      "operations manager", "supply chain manager", "logistics manager",
+      "mechanical engineer", "civil engineer", "structural engineer",
+      "electrical engineer", "hardware engineer", "embedded engineer",
+      "manufacturing engineer", "industrial engineer",
+      "accountant", "financial analyst", "finance manager", "controller",
+      "customer support", "customer service", "customer success manager",
+      "product designer", "interaction designer",
+      "scrum master", "agile coach",
+      "office manager", "executive assistant", "administrative assistant",
+      "network engineer", "systems administrator", "it support",
+      "junior ml engineer", "ml intern", "data science intern"
+    ]
+  },
+  "alias_map": {
+    "description": "Common title variations to normalize before taxonomy lookup",
+    "normalizations": {
+      "senior": ["sr.", "sr ", "snr"],
+      "machine learning": ["ml", "m.l."],
+      "artificial intelligence": ["ai", "a.i."],
+      "natural language processing": ["nlp"],
+      "engineer": ["eng.", "engr."],
+      "developer": ["dev", "dev."],
+      "manager": ["mgr."],
+      "specialist": ["spl."]
+    }
+  },
+  "company_context_modifiers": {
+    "description": "When the same title appears at different company types, apply these modifiers to tier scores.",
+    "ai_ml_company": {
+      "modifier": 1.2,
+      "description": "Boost if candidate is at an AI/ML product company (even in adjacent roles)",
+      "industries": ["AI/ML", "AI Services", "Conversational AI", "HealthTech AI"]
+    },
+    "product_startup": {
+      "modifier": 1.1,
+      "description": "Slight boost for product startups (small AI companies)",
+      "company_sizes": ["1-10", "11-50", "51-200"]
+    },
+    "consulting_firm": {
+      "modifier": 0.6,
+      "description": "Penalty for known IT consulting firms",
+      "company_names": ["tcs", "infosys", "wipro", "accenture", "cognizant", "capgemini", "hcl", "tech mahindra", "mphasis", "mindtree", "ltimindtree", "hexaware", "zensar", "meritech"]
+    }
+  }
+}

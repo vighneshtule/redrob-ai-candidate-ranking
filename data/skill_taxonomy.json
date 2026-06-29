@@ -1,0 +1,83 @@
+{
+  "_meta": {
+    "description": "JD skills taxonomy for Redrob AI Senior AI Engineer role. Tier-A = must-have, Tier-B = nice-to-have, Tier-C = adjacent/positive signal.",
+    "generated": "2026-06-19",
+    "source": "job_description.docx + domain knowledge"
+  },
+  "tier_a": {
+    "description": "Must-have skills from JD. Direct match = high score.",
+    "skills": {
+      "sentence-transformers": ["sentence transformers", "sbert", "sentence-bert", "sentence_transformers", "sentencetransformers"],
+      "bge": ["bge", "bge-m3", "bge-large", "bge-small", "bge-base", "baai/bge"],
+      "e5": ["e5", "e5-large", "e5-small", "e5-base", "multilingual e5", "intfloat/e5"],
+      "embeddings-retrieval": ["embeddings-based retrieval", "embedding retrieval", "dense retrieval", "bi-encoder", "bi encoder"],
+      "pinecone": ["pinecone"],
+      "weaviate": ["weaviate"],
+      "qdrant": ["qdrant"],
+      "milvus": ["milvus"],
+      "faiss": ["faiss", "facebook ai similarity search", "faiss-gpu", "faiss-cpu"],
+      "opensearch": ["opensearch", "open search"],
+      "elasticsearch": ["elasticsearch", "elastic search", "elastic"],
+      "vector-database": ["vector database", "vector db", "vector store", "vector index", "ann index"],
+      "hybrid-search": ["hybrid search", "hybrid retrieval", "bm25", "sparse dense hybrid", "lexical semantic hybrid"],
+      "python": ["python", "python3", "python programming"],
+      "ndcg": ["ndcg", "normalized discounted cumulative gain", "ndcg@10", "ndcg@50"],
+      "mrr": ["mrr", "mean reciprocal rank"],
+      "map": ["map", "mean average precision"],
+      "evaluation-framework": ["evaluation framework", "ranking evaluation", "a/b testing", "ab testing", "offline evaluation", "online evaluation", "retrieval evaluation", "ir evaluation"],
+      "retrieval-ranking": ["information retrieval", "ir", "search ranking", "document ranking", "candidate ranking", "relevance ranking"],
+      "re-ranking": ["re-ranking", "reranking", "cross-encoder", "pointwise ranking", "pairwise ranking", "listwise ranking"]
+    }
+  },
+  "tier_b": {
+    "description": "Nice-to-have skills from JD. Match = moderate score boost.",
+    "skills": {
+      "lora": ["lora", "low-rank adaptation"],
+      "qlora": ["qlora", "quantized lora"],
+      "peft": ["peft", "parameter efficient fine-tuning", "parameter-efficient"],
+      "llm-finetuning": ["llm fine-tuning", "llm finetuning", "language model fine-tuning", "instruction tuning", "supervised fine-tuning", "sft"],
+      "learning-to-rank": ["learning to rank", "ltr", "lambdamart", "lambdarank", "ranknet", "xgboost ranking", "gradient boosting rank"],
+      "recommendation-systems": ["recommendation systems", "recommender systems", "collaborative filtering", "matrix factorization", "item recommendation", "user recommendations"],
+      "distributed-inference": ["distributed inference", "model serving", "inference optimization", "onnx", "tensorrt", "triton inference", "model quantization"],
+      "oss-contributions": ["open source contributions", "github contributions", "open-source", "open source maintainer"],
+      "hr-tech": ["hr tech", "hrtech", "recruiting technology", "talent acquisition", "ats", "applicant tracking"]
+    }
+  },
+  "tier_c": {
+    "description": "Adjacent skills — positive signal but not discriminating alone.",
+    "skills": {
+      "rag": ["rag", "retrieval augmented generation", "retrieval-augmented generation", "retrieval augmented"],
+      "llm": ["llm", "large language models", "language model", "gpt", "chatgpt", "claude", "gemini", "llama"],
+      "transformers": ["transformers", "hugging face", "huggingface", "bert", "roberta", "distilbert", "albert"],
+      "pytorch": ["pytorch", "torch", "pytorch lightning"],
+      "tensorflow": ["tensorflow", "tf", "keras"],
+      "nlp": ["nlp", "natural language processing", "text mining", "text analytics", "computational linguistics"],
+      "mlops": ["mlops", "ml ops", "ml pipeline", "model deployment", "model monitoring", "ml infrastructure"],
+      "vector-search": ["vector search", "semantic search", "neural search", "knn search", "ann"],
+      "scikit-learn": ["scikit-learn", "sklearn", "scikit learn"],
+      "feature-engineering": ["feature engineering", "feature extraction", "feature selection"],
+      "model-evaluation": ["model evaluation", "cross-validation", "metrics", "precision recall", "f1 score"],
+      "apache-spark": ["apache spark", "spark", "pyspark"],
+      "mlflow": ["mlflow", "ml flow"],
+      "kubeflow": ["kubeflow"],
+      "weights-biases": ["weights & biases", "wandb", "weights and biases"],
+      "data-science": ["data science", "machine learning", "statistical modeling", "predictive modeling"],
+      "cloud-ml": ["aws sagemaker", "azure ml", "google ai platform", "vertex ai", "sagemaker"],
+      "docker-k8s": ["docker", "kubernetes", "k8s", "containerization"]
+    }
+  },
+  "negative": {
+    "description": "Skills that are clear non-AI signals — their presence as primary skills indicates non-AI candidates.",
+    "skills": [
+      "accounting", "bookkeeping", "tally", "sap", "erp",
+      "content writing", "copywriting", "seo", "social media marketing",
+      "illustrator", "photoshop", "figma", "canva", "graphic design",
+      "mechanical design", "autocad", "solidworks", "ansys",
+      "civil engineering", "structural analysis", "construction management",
+      "sales crm", "salesforce crm", "hubspot", "cold calling",
+      "recruitment", "hr management", "payroll", "employee engagement",
+      "project management", "scrum master", "pmp certification",
+      "customer support", "customer service", "help desk"
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "n_candidates": 100,
+    "top_k": 100,
+    "n_ranked": 100,
+    "elapsed_s": 0.07693599999765866,
+    "throughput_cps": 1299.7816367245923,
+    "rss_before_mb": 0.0,
+    "rss_after_mb": 0.0,
+    "rss_delta_mb": 0.0
+  },
+  {
+    "n_candidates": 5000,
+    "top_k": 100,
+    "n_ranked": 100,
+    "elapsed_s": 3.1036126999970293,
+    "throughput_cps": 1611.0257571780094,
+    "rss_before_mb": 0.0,
+    "rss_after_mb": 0.0,
+    "rss_delta_mb": 0.0
+  },
+  {
+    "n_candidates": 100000,
+    "top_k": 100,
+    "n_ranked": 100,
+    "elapsed_s": 97.32404159999714,
+    "throughput_cps": 1027.4953480764914,
+    "rss_before_mb": 0.0,
+    "rss_after_mb": 0.0,
+    "rss_delta_mb": 0.0
+  }
+]

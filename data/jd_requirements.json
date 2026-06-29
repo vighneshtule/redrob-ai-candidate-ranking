@@ -1,0 +1,143 @@
+{
+  "role": "Senior AI Engineer — Founding Team",
+  "company": "Redrob AI",
+  "company_stage": "Series A",
+  "company_type": "AI-native talent intelligence platform",
+
+  "must_have": [
+    "Production experience with embeddings-based retrieval systems (sentence-transformers, OpenAI embeddings, BGE, E5, or similar)",
+    "Experience handling embedding drift, index refresh, retrieval-quality regression in production",
+    "Production experience with vector databases or hybrid search infrastructure (Pinecone, Weaviate, Qdrant, Milvus, OpenSearch, Elasticsearch, FAISS)",
+    "Operational experience with vector DB / hybrid search (not just tutorial-level exposure)",
+    "Strong Python — code quality matters",
+    "Hands-on experience designing evaluation frameworks for ranking systems (NDCG, MRR, MAP, A/B test interpretation)",
+    "Has shipped at least one end-to-end ranking, search, or recommendation system to real users at meaningful scale",
+    "Product-company experience (not exclusively services/consulting)",
+    "Production code written in last 18 months"
+  ],
+
+  "good_to_have": [
+    "LLM fine-tuning experience (LoRA, QLoRA, PEFT)",
+    "Experience with learning-to-rank models (XGBoost-based or neural L2R)",
+    "Prior exposure to HR-tech, recruiting tech, or marketplace products",
+    "Background in distributed systems or large-scale inference optimization",
+    "Open-source contributions in the AI/ML space",
+    "Blog posts, papers, or conference talks demonstrating public thought leadership",
+    "Pre-LLM-era ML production experience (pre-2022)"
+  ],
+
+  "experience_min": 5,
+  "experience_max": 9,
+  "experience_note": "Range is indicative, not strict. 4 years acceptable if other signals are strong. Disqualifiers apply regardless of years.",
+  "ideal_experience_years": "6-8 years total, of which 4-5 are in applied ML/AI at product companies",
+
+  "industries": [
+    "AI/ML product companies",
+    "Fintech (product side)",
+    "E-commerce / marketplace",
+    "HR-tech / RecTech",
+    "SaaS product companies"
+  ],
+  "negative_industries": [
+    "Pure consulting firms: TCS, Infosys, Wipro, Accenture, Cognizant, Capgemini",
+    "Note: consulting background OK if candidate ALSO has product-company experience"
+  ],
+
+  "seniority": "Senior / Staff level with a bias toward hands-on coding (not pure architecture/management)",
+  "seniority_note": "This role writes production code. Candidates who have moved to pure 'architecture' or 'tech lead' roles without coding in 18+ months are explicitly excluded.",
+
+  "locations_preferred": [
+    "Pune, India",
+    "Noida, India"
+  ],
+  "locations_acceptable": [
+    "Hyderabad, India",
+    "Mumbai, India",
+    "Delhi NCR, India",
+    "Bangalore, India (open to relocation candidates)"
+  ],
+  "locations_negative": [
+    "Outside India — case-by-case, no visa sponsorship"
+  ],
+
+  "notice_period": {
+    "ideal_days": 30,
+    "acceptable_days": 90,
+    "note": "Sub-30 days ideal. Up to 30 days can be bought out. Over 30 days reduces priority but does not disqualify.",
+    "negative_threshold_days": 90
+  },
+
+  "technical_skills_required": {
+    "embeddings_retrieval": [
+      "sentence-transformers", "BGE", "E5", "OpenAI embeddings",
+      "embedding drift handling", "index refresh", "retrieval quality regression"
+    ],
+    "vector_databases": [
+      "Pinecone", "Weaviate", "Qdrant", "Milvus", "OpenSearch", "Elasticsearch", "FAISS"
+    ],
+    "evaluation_frameworks": [
+      "NDCG", "MRR", "MAP", "P@K", "offline-to-online correlation", "A/B testing"
+    ],
+    "programming": ["Python (strong, production quality)"],
+    "retrieval_paradigms": ["hybrid search", "dense retrieval", "BM25", "re-ranking"]
+  },
+
+  "technical_skills_nice_to_have": {
+    "llm_fine_tuning": ["LoRA", "QLoRA", "PEFT"],
+    "learning_to_rank": ["XGBoost LTR", "LambdaMART", "neural LTR"],
+    "infrastructure": ["distributed systems", "large-scale inference optimization"]
+  },
+
+  "behavioral_traits": [
+    "Ships working systems even if ML is suboptimal — values iteration over perfection",
+    "Writes async-first — comfortable with written communication over verbal",
+    "Disagrees openly, decides quickly — tolerant of constructive conflict",
+    "Comfortable with ambiguity and fast-changing requirements",
+    "Plans to stay 3+ years — not a title-chaser or job-hopper",
+    "Thinks about systems, not just frameworks",
+    "Has strong opinions on retrieval / evaluation / LLM integration and can defend them",
+    "Active on Redrob platform or clear signal of being in the job market",
+    "Willing to travel quarterly for offsites"
+  ],
+
+  "cultural_expectations": [
+    "Founding-team mindset — role evolves every 6 months as company grows",
+    "Async-first work style — heavy on writing",
+    "Fast-moving startup culture — stable mature codebase not the norm",
+    "Open disagreement and quick decision-making",
+    "Willing to mentor next round of hires"
+  ],
+
+  "negative_signals": [
+    "Career trajectory shows title-chasing (switching every 1.5 years for title bumps)",
+    "GitHub/blog shows only framework tutorials, no systems thinking",
+    "Entire career at consulting firms (TCS, Infosys, Wipro, Accenture, Cognizant, Capgemini)",
+    "Primary expertise in CV/speech/robotics without NLP/IR exposure",
+    "5+ years on closed-source proprietary systems with no external validation",
+    "AI experience is primarily recent (<12 months) LangChain API-wrapping",
+    "Pure research background — academic labs or research-only roles without production deployment",
+    "Has not written production code in last 18 months",
+    "Keyword stuffing: AI skills listed but career history is irrelevant (Marketing Manager, HR Manager, etc.)",
+    "Inactive on platform: last_active_date > 6 months ago",
+    "recruiter_response_rate < 0.15 — not responsive to recruiter outreach",
+    "notice_period_days > 90 — too long to onboard"
+  ],
+
+  "hidden_signals": {
+    "career_history_must_match_title": "A candidate with 'Senior ML Engineer' as title but a career of 'Business Analyst' roles is a keyword stuffer.",
+    "product_vs_services_distinction": "Time at product companies (startups, scale-ups, tech cos) is more valuable than equivalent time at IT services firms.",
+    "pre_llm_experience_valued": "Experience with retrieval/ranking before 2022 (pre-ChatGPT era) indicates genuine depth.",
+    "recommendation_systems_is_adjacent": "Recommendation systems experience is a strong positive signal even if not explicitly 'search/retrieval'.",
+    "data_engineering_is_not_ml": "Strong data pipeline background (Spark, Airflow, ETL) without ML modeling is insufficient for this role.",
+    "platform_engagement": "open_to_work_flag + recent last_active_date + reasonable recruiter_response_rate = actually reachable candidate.",
+    "github_activity_positive": "github_activity_score > 40 is a positive signal for technical engagement.",
+    "startup_experience_valued": "Company size '1-10', '11-50', '51-200' at product companies shows startup/founding team experience."
+  },
+
+  "evaluation_anti_patterns": {
+    "keyword_stuffing_trap": "Do NOT rank by AI keyword count in skills section. HR Managers with 9 AI skills should rank low.",
+    "experience_years_trap": "Do NOT rank purely by years_of_experience. 15 years as a Mechanical Engineer < 5 years as an ML Engineer.",
+    "availability_trap": "Do NOT ignore behavioral signals. Perfect-on-paper + inactive/unresponsive = poor practical candidate.",
+    "honeypot_trap": "~80 candidates have impossible profiles (timeline contradictions, salary inversions, etc.). Must detect and exclude."
+  }
+}
