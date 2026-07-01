@@ -361,12 +361,99 @@ def _classify_industry(
     return multiplier
 
 
+
+@dataclass
+class _ParsedRole:
+    raw_role: dict
+    start_date: Optional[date]
+    end_date: Optional[date]
+    duration_months: float
+    title_decay: float
+    company_decay: float
+    norm_title: str
+    seniority_level: int
+    tier_name: str
+    tier_score: float
+    company_context_tier_score: float
+    is_negative_company: bool
+    is_product: bool
+    is_consulting: bool
+    industry_multiplier: float
+    keyword_rel: float
+    combined_text: str
+
+def _parse_career_history(
+    career_history: list[dict],
+    title_taxonomy: dict,
+    today: date,
+) -> list[_ParsedRole]:
+    parsed_roles = []
+    for role in career_history:
+        start_date = parse_date(role.get("start_date"))
+        end_str = role.get("end_date")
+        is_current = role.get("is_current", False)
+        
+        end_date = parse_date(end_str) if (end_str and not is_current) else today
+        
+        duration_months = float(role.get("duration_months", 0) or 0)
+        if duration_months <= 0:
+            if start_date and end_date:
+                duration_months = float(max(0, months_between(start_date, end_date)))
+            if duration_months <= 0:
+                duration_months = 12.0
+                
+        title_decay = recency_decay(start_date, today, _TITLE_RECENCY_HALF_LIFE_DAYS) if start_date else 0.5
+        company_decay = recency_decay(start_date, today, _COMPANY_RECENCY_HALF_LIFE_DAYS) if start_date else 0.5
+        
+        role_title_raw = role.get("title", "") or ""
+        norm_title = normalize_title(role_title_raw)
+        seniority_level = _get_seniority_level(role_title_raw)
+        tier_name, tier_score = _lookup_tier(norm_title, title_taxonomy)
+        
+        company_name = role.get("company", "") or ""
+        company_industry = role.get("company_industry", "") or ""
+        company_context_tier_score = _apply_company_modifier(
+            tier_score, company_name, company_industry, title_taxonomy
+        )
+        company_context_tier_score = min(company_context_tier_score, 1.0)
+        
+        is_neg_comp = _is_negative_company(company_name)
+        is_product = company_industry in _PRODUCT_INDUSTRIES and not is_neg_comp
+        is_consulting = company_industry in {"IT Services", "Consulting"} or is_neg_comp
+        industry_multiplier = _classify_industry(company_industry, company_name)
+        
+        description = role.get("description", "") or ""
+        combined_text = f"{role_title_raw} {description}"
+        keyword_rel = keyword_relevance(combined_text, _RETRIEVAL_KEYWORDS, _RETRIEVAL_KEYWORDS_WEIGHTED)
+        
+        parsed_roles.append(_ParsedRole(
+            raw_role=role,
+            start_date=start_date,
+            end_date=end_date,
+            duration_months=duration_months,
+            title_decay=title_decay,
+            company_decay=company_decay,
+            norm_title=norm_title,
+            seniority_level=seniority_level,
+            tier_name=tier_name,
+            tier_score=tier_score,
+            company_context_tier_score=company_context_tier_score,
+            is_negative_company=is_neg_comp,
+            is_product=is_product,
+            is_consulting=is_consulting,
+            industry_multiplier=industry_multiplier,
+            keyword_rel=keyword_rel,
+            combined_text=combined_text
+        ))
+    return parsed_roles
+
 # ---------------------------------------------------------------------------
 # Sub-scorers
 # ---------------------------------------------------------------------------
 
 def _score_title_relevance(
     candidate: dict,
+    parsed_roles: list[_ParsedRole],
     title_taxonomy: dict,
     today: date,
 ) -> tuple[float, str]:
@@ -408,47 +495,16 @@ def _score_title_relevance(
     weighted_sum = 0.0
     roles_desc: list[str] = []
 
-    for role in career_history:
-        role_title_raw = role.get("title", "")
+    for pr in parsed_roles:
+        role_title_raw = pr.raw_role.get("title", "")
         if not role_title_raw:
             continue
 
-        norm_role_title = normalize_title(role_title_raw)
-        tier_name, tier_score = _lookup_tier(norm_role_title, tier_lists)
-
-        # Company context modifier
-        role_company = role.get("company", "")
-        role_industry = role.get("company_industry", "")
-        tier_score = _apply_company_modifier(
-            tier_score, role_company, role_industry, title_taxonomy
-        )
-        tier_score = min(tier_score, 1.0)
-
-        # Duration weight
-        duration_months = float(role.get("duration_months", 0) or 0)
-        if duration_months <= 0:
-            # Estimate from dates if available
-            start = parse_date(role.get("start_date"))
-            end_str = role.get("end_date")
-            is_current = role.get("is_current", False)
-            if start:
-                end = parse_date(end_str) if (end_str and not is_current) else today
-                if end:
-                    duration_months = float(max(0, months_between(start, end)))
-            if duration_months <= 0:
-                duration_months = 12.0  # default 1-year estimate
-
-        # Recency decay: use start_date as the reference point for the role
-        start_date = parse_date(role.get("start_date"))
-        if start_date:
-            decay = recency_decay(start_date, today, _TITLE_RECENCY_HALF_LIFE_DAYS)
-        else:
-            decay = 0.5  # unknown date → moderate recency
-
-        role_weight = duration_months * decay
+        tier_score = pr.company_context_tier_score
+        role_weight = pr.duration_months * pr.title_decay
         weighted_sum += tier_score * role_weight
         total_weight += role_weight
-        roles_desc.append(f"{role_title_raw}({tier_name})")
+        roles_desc.append(f"{role_title_raw}({pr.tier_name})")
 
     history_score = (weighted_sum / total_weight) if total_weight > 0 else 0.0
     history_score = min(history_score, 1.0)
@@ -471,6 +527,7 @@ def _score_title_relevance(
 
 def _score_career_history_relevance(
     candidate: dict,
+    parsed_roles: list[_ParsedRole],
     today: date,
 ) -> tuple[float, str]:
     """
@@ -488,35 +545,14 @@ def _score_career_history_relevance(
     weighted_relevance = 0.0
     top_roles: list[str] = []
 
-    for role in career_history:
-        description = role.get("description", "") or ""
-        title_text = role.get("title", "") or ""
-        # Combine title and description for keyword search
-        combined_text = f"{title_text} {description}"
-
-        rel = keyword_relevance(combined_text, _RETRIEVAL_KEYWORDS, _RETRIEVAL_KEYWORDS_WEIGHTED)
-
-        duration_months = float(role.get("duration_months", 0) or 0)
-        if duration_months <= 0:
-            start = parse_date(role.get("start_date"))
-            end_str = role.get("end_date")
-            is_current = role.get("is_current", False)
-            if start:
-                end = parse_date(end_str) if (end_str and not is_current) else today
-                if end:
-                    duration_months = float(max(0, months_between(start, end)))
-            if duration_months <= 0:
-                duration_months = 12.0
-
-        start_date = parse_date(role.get("start_date"))
-        decay = recency_decay(start_date, today, _TITLE_RECENCY_HALF_LIFE_DAYS) if start_date else 0.5
-
-        role_weight = duration_months * decay
+    for pr in parsed_roles:
+        rel = pr.keyword_rel
+        role_weight = pr.duration_months * pr.title_decay
         weighted_relevance += rel * role_weight
         total_weight += role_weight
 
         if rel > 0.10:
-            top_roles.append(f"'{role.get('title', '?')}' (rel={rel:.2f})")
+            top_roles.append(f"'{pr.raw_role.get('title', '?')}' (rel={rel:.2f})")
 
     score = (weighted_relevance / total_weight) if total_weight > 0 else 0.0
 
@@ -536,6 +572,7 @@ def _score_career_history_relevance(
 
 def _score_product_company(
     candidate: dict,
+    parsed_roles: list[_ParsedRole],
     industry_taxonomy: dict,
     today: date,
 ) -> tuple[float, str]:
@@ -558,44 +595,20 @@ def _score_product_company(
     has_consulting_only = True
     company_notes: list[str] = []
 
-    for role in career_history:
-        company_name = role.get("company", "") or ""
-        company_industry = role.get("company_industry", "") or ""
+    for pr in parsed_roles:
+        multiplier = pr.industry_multiplier
+        role_weight = pr.duration_months * pr.company_decay
 
-        multiplier = _classify_industry(company_industry, company_name)
-
-        duration_months = float(role.get("duration_months", 0) or 0)
-        if duration_months <= 0:
-            start = parse_date(role.get("start_date"))
-            end_str = role.get("end_date")
-            is_current = role.get("is_current", False)
-            if start:
-                end = parse_date(end_str) if (end_str and not is_current) else today
-                if end:
-                    duration_months = float(max(0, months_between(start, end)))
-            if duration_months <= 0:
-                duration_months = 12.0
-
-        start_date = parse_date(role.get("start_date"))
-        decay = recency_decay(start_date, today, _COMPANY_RECENCY_HALF_LIFE_DAYS) if start_date else 0.5
-
-        role_weight = duration_months * decay
-
-        # Track whether this is a product company
-        is_product = company_industry in _PRODUCT_INDUSTRIES and not _is_negative_company(company_name)
-        is_consulting = (
-            company_industry in {"IT Services", "Consulting"}
-            or _is_negative_company(company_name)
-        )
-
-        if is_product:
+        if pr.is_product:
             has_product_company = True
-        if not is_consulting:
+        if not pr.is_consulting:
             has_consulting_only = False
 
         weighted_product_months += multiplier * role_weight
         total_months += role_weight  # baseline: all roles at 1.0 multiplier
 
+        company_name = pr.raw_role.get("company", "") or ""
+        company_industry = pr.raw_role.get("company_industry", "") or ""
         note = f"{company_name or '?'} ({company_industry or 'unknown'}, ×{multiplier:.1f})"
         company_notes.append(note)
 
@@ -627,6 +640,7 @@ def _score_product_company(
 
 def _score_relevant_experience(
     candidate: dict,
+    parsed_roles: list[_ParsedRole],
     today: date,
 ) -> tuple[float, str]:
     """
@@ -650,29 +664,11 @@ def _score_relevant_experience(
 
     relevant_months = 0.0
 
-    for role in career_history:
-        description = role.get("description", "") or ""
-        title_text = role.get("title", "") or ""
-        combined_text = f"{title_text} {description}"
-
-        rel = keyword_relevance(combined_text, _RETRIEVAL_KEYWORDS, _RETRIEVAL_KEYWORDS_WEIGHTED)
-
-        if rel < _RELEVANCE_THRESHOLD:
+    for pr in parsed_roles:
+        if pr.keyword_rel < _RELEVANCE_THRESHOLD:
             continue  # This role doesn't count as ML/Search relevant
 
-        duration_months = float(role.get("duration_months", 0) or 0)
-        if duration_months <= 0:
-            start = parse_date(role.get("start_date"))
-            end_str = role.get("end_date")
-            is_current = role.get("is_current", False)
-            if start:
-                end = parse_date(end_str) if (end_str and not is_current) else today
-                if end:
-                    duration_months = float(max(0, months_between(start, end)))
-            if duration_months <= 0:
-                duration_months = 12.0
-
-        relevant_months += duration_months
+        relevant_months += pr.duration_months
 
     relevant_years = relevant_months / 12.0
 
@@ -702,6 +698,7 @@ def _score_relevant_experience(
 
 def _score_career_consistency(
     candidate: dict,
+    parsed_roles: list[_ParsedRole],
     today: date,
 ) -> tuple[float, str]:
     """
@@ -724,12 +721,10 @@ def _score_career_consistency(
     # ---- Sub-signal 1: Title progression ----
     # Assign seniority level to each role; sort by start_date; compute trend
     timed_levels: list[tuple[date, int]] = []
-    for role in career_history:
-        start = parse_date(role.get("start_date"))
-        if start is None:
+    for pr in parsed_roles:
+        if pr.start_date is None:
             continue
-        level = _get_seniority_level(role.get("title", ""))
-        timed_levels.append((start, level))
+        timed_levels.append((pr.start_date, pr.seniority_level))
 
     timed_levels.sort(key=lambda x: x[0])
 
@@ -753,13 +748,10 @@ def _score_career_consistency(
     it_services_count = 0
     neutral_count = 0
 
-    for role in career_history:
-        industry = role.get("company_industry", "") or ""
-        company = role.get("company", "") or ""
-
-        if _is_negative_company(company) or industry in {"IT Services", "Consulting"}:
+    for pr in parsed_roles:
+        if pr.is_consulting:
             it_services_count += 1
-        elif industry in _PRODUCT_INDUSTRIES:
+        elif pr.is_product:
             tech_product_count += 1
         else:
             neutral_count += 1
@@ -796,21 +788,15 @@ def _score_career_consistency(
     if len(career_history) >= 2:
         # Sort by start_date and check the first-half vs second-half industry mix
         sorted_roles = sorted(
-            [r for r in career_history if parse_date(r.get("start_date"))],
-            key=lambda r: parse_date(r.get("start_date")),
+            [pr for pr in parsed_roles if pr.start_date],
+            key=lambda pr: pr.start_date,
         )
         midpoint = len(sorted_roles) // 2
         early_roles = sorted_roles[:midpoint]
         late_roles = sorted_roles[midpoint:]
 
-        def _is_product_role(r: dict) -> bool:
-            return (
-                r.get("company_industry", "") in _PRODUCT_INDUSTRIES
-                and not _is_negative_company(r.get("company", ""))
-            )
-
-        early_product = sum(1 for r in early_roles if _is_product_role(r))
-        late_product = sum(1 for r in late_roles if _is_product_role(r))
+        early_product = sum(1 for pr in early_roles if pr.is_product)
+        late_product = sum(1 for pr in late_roles if pr.is_product)
 
         early_product_frac = early_product / max(len(early_roles), 1)
         late_product_frac = late_product / max(len(late_roles), 1)
@@ -900,12 +886,16 @@ def score_career(
     """
     ref_today: date = today or _get_today()
 
+    # --- Parse career history once ---
+    career_history = candidate.get("career_history") or []
+    parsed_roles = _parse_career_history(career_history, title_taxonomy, ref_today)
+
     # --- Run all five sub-scorers ---
-    title_score, title_expl = _score_title_relevance(candidate, title_taxonomy, ref_today)
-    history_score, history_expl = _score_career_history_relevance(candidate, ref_today)
-    product_score, product_expl = _score_product_company(candidate, industry_taxonomy, ref_today)
-    exp_score, exp_expl = _score_relevant_experience(candidate, ref_today)
-    consistency_score, consistency_expl = _score_career_consistency(candidate, ref_today)
+    title_score, title_expl = _score_title_relevance(candidate, parsed_roles, title_taxonomy, ref_today)
+    history_score, history_expl = _score_career_history_relevance(candidate, parsed_roles, ref_today)
+    product_score, product_expl = _score_product_company(candidate, parsed_roles, industry_taxonomy, ref_today)
+    exp_score, exp_expl = _score_relevant_experience(candidate, parsed_roles, ref_today)
+    consistency_score, consistency_expl = _score_career_consistency(candidate, parsed_roles, ref_today)
 
     # --- Final weighted aggregation ---
     final = (

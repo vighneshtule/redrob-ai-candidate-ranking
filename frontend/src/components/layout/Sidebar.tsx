@@ -1,10 +1,10 @@
 import { Link, useLocation } from "react-router";
 import { motion } from "framer-motion";
-import { 
-  LayoutDashboard, 
-  BarChart3, 
-  Timer, 
-  Settings, 
+import {
+  LayoutDashboard,
+  BarChart3,
+  Timer,
+  Settings,
   GitBranch as Github,
   ChevronLeft,
   Sparkles,
@@ -30,7 +30,7 @@ export function Sidebar() {
   return (
     <motion.aside
       initial={false}
-      animate={{ 
+      animate={{
         width: sidebarOpen ? 256 : 80,
       }}
       transition={{ type: "spring", bounce: 0, duration: 0.3 }}
@@ -42,7 +42,7 @@ export function Sidebar() {
             <span className="text-primary-foreground font-bold text-sm">R</span>
           </div>
           {sidebarOpen && (
-            <motion.span 
+            <motion.span
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -90,7 +90,7 @@ export function Sidebar() {
 
       <div className="p-4 border-t border-border">
         <a
-          href="https://github.com"
+          href="https://github.com/vighneshtule/redrob-ai-candidate-ranking"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-3 px-3 py-2 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-secondary whitespace-nowrap overflow-hidden"

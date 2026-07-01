@@ -52,7 +52,8 @@ def main():
     
     print("Loading candidates...")
     candidates = []
-    with open("[PUB] India_runs_data_and_ai_challenge/India_runs_data_and_ai_challenge/candidates.jsonl", "r", encoding="utf-8") as f:
+    candidates_path = "data/candidates.jsonl"
+    with open(candidates_path, "r", encoding="utf-8") as f:
         for line in f:
             if not line.strip(): continue
             candidates.append(json.loads(line))
@@ -66,7 +67,9 @@ def main():
     
     docs = [build_candidate_document(c) for c in candidates]
     print("Encoding candidates...")
-    embeddings = model.encode(docs, batch_size=32, show_progress_bar=True)
+    embeddings = model.encode(docs, batch_size=64, show_progress_bar=True)
+    print("Embedding dimension:", embeddings.shape[1])
+    print("JD embedding dimension:", jd_embedding.shape[0])
     
     for c, emb in zip(candidates, embeddings):
         cache["candidates"][c["candidate_id"]] = emb

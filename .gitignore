@@ -53,6 +53,6 @@ outputs/debug/
 coverage/
 
 # Large Datasets (challenge inputs/outputs)
+[PUB] India_runs_data_and_ai_challenge/
+data/candidates.jsonl
 *.jsonl
-candidates.jsonl
-[PUB] India_runs_data_and_ai_challenge/India_runs_data_and_ai_challenge/candidates.jsonl

@@ -50,9 +50,12 @@ Public API
 from __future__ import annotations
 
 import heapq
+import math
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import date
-from typing import Iterator, Optional, Any
+from typing import Iterator, List, Optional, Any
 
 from src.config import STUFFING_PENALTY_THRESHOLD
 from src.pipeline.feature_extractor import CandidateFeatures, extract_features
@@ -230,12 +233,9 @@ def rank_candidates(
     heap: list[tuple] = []
 
     for raw_candidate in candidates:
-        candidate_embedding = None
-        if semantic_cache:
-            cid = str(raw_candidate.get("candidate_id", ""))
-            candidate_embedding = semantic_cache.get(cid)
-
-        # Extract features (integrity-first, veto short-circuit)
+        # Extract features (integrity-first, veto short-circuit).
+        # semantic_cache and jd_embedding are forwarded to extract_features(),
+        # which performs the per-candidate embedding lookup internally.
         features = extract_features(
             raw_candidate,
             title_taxonomy,
@@ -243,7 +243,7 @@ def rank_candidates(
             tier_a, tier_b, tier_c,
             debug=debug,
             today=today,
-            candidate_embedding=candidate_embedding,
+            semantic_cache=semantic_cache,
             jd_embedding=jd_embedding,
         )
 
@@ -268,6 +268,158 @@ def rank_candidates(
     sorted_entries = sorted(heap, key=lambda entry: entry[0], reverse=True)
 
     # Assign ranks and build output
+    results: list[RankedCandidate] = []
+    for rank_idx, (_, features, score) in enumerate(sorted_entries, start=1):
+        explanation = generate_explanation(features, score)
+        breakdown = dict(features.final_feature_vector)
+        breakdown["final_score"] = score
+
+        results.append(
+            RankedCandidate(
+                candidate_id=features.candidate_id,
+                final_score=round(score, 6),
+                rank=rank_idx,
+                feature_breakdown=breakdown,
+                explanation=explanation,
+            )
+        )
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Parallel public function
+# ---------------------------------------------------------------------------
+
+def rank_candidates_parallel(
+    candidates: List[dict],
+    title_taxonomy: dict,
+    industry_taxonomy: dict,
+    tier_a: dict,
+    tier_b: dict,
+    tier_c: dict,
+    top_k: int = 100,
+    today: Optional[date] = None,
+    semantic_cache: Optional[dict] = None,
+    jd_embedding: Optional[Any] = None,
+    n_workers: Optional[int] = None,
+) -> list[RankedCandidate]:
+    """
+    Parallelized drop-in replacement for rank_candidates().
+
+    Architecture
+    ------------
+    1. Partition *candidates* into ``n_workers`` contiguous batches.
+    2. Spawn ``n_workers`` worker processes via ProcessPoolExecutor.
+       Each worker calls ``_worker_init()`` once — taxonomies and the
+       semantic cache are pickled *once per worker* at startup, not once
+       per batch, so IPC overhead scales with N_WORKERS not N_CANDIDATES.
+    3. Dispatch one ``score_batch()`` call per worker; collect futures.
+    4. Merge all ``(sort_key, features, score)`` tuples from all workers
+       in the main process.
+    5. Run the existing Top-K min-heap exactly once over the merged list.
+    6. Generate explanations for the Top-K candidates in the main process.
+
+    Parameters
+    ----------
+    candidates : list[dict]
+        The full loaded candidate list (NOT a generator — must be sliceable).
+    title_taxonomy, industry_taxonomy : dict
+        Career-scorer taxonomy dicts.
+    tier_a, tier_b, tier_c : dict
+        Skill-taxonomy tier dicts.
+    top_k : int
+        Number of top candidates to return (default 100).
+    today : date, optional
+        Reference date for recency calculations.
+    semantic_cache : dict, optional
+        Maps candidate_id -> embedding array.
+    jd_embedding : array-like, optional
+        Precomputed JD embedding.
+    n_workers : int, optional
+        Number of worker processes.  Defaults to ``os.cpu_count()`` capped at 8.
+
+    Returns
+    -------
+    list[RankedCandidate]
+        Identical ordering and scores to the serial ``rank_candidates()``.
+
+    Notes
+    -----
+    * The function requires *candidates* to be a list (not a generator) so it
+      can be sliced into batches.  Call ``list(load_candidates(...))`` first.
+    * On Windows the ``spawn`` start-method is used automatically by
+      ``ProcessPoolExecutor`` — all objects passed to the initializer must
+      be picklable.  Numpy arrays and standard dicts satisfy this.
+    * If ``n_workers == 1`` the function falls back to the serial path to
+      avoid spawn overhead on small datasets or single-core machines.
+    """
+    # Import here to avoid circular imports at module load time.
+    from src.pipeline.worker import _worker_init, score_batch
+
+    effective_workers = min(
+        n_workers or (os.cpu_count() or 1),
+        8,                   # cap — diminishing returns beyond ~8 for this workload
+        max(len(candidates), 1),  # never more workers than candidates
+    )
+
+    # Fall back to serial path for trivially small inputs or single-core machines.
+    if effective_workers <= 1 or len(candidates) < 2:
+        return rank_candidates(
+            iter(candidates),
+            title_taxonomy=title_taxonomy,
+            industry_taxonomy=industry_taxonomy,
+            tier_a=tier_a,
+            tier_b=tier_b,
+            tier_c=tier_c,
+            top_k=top_k,
+            today=today,
+            semantic_cache=semantic_cache,
+            jd_embedding=jd_embedding,
+        )
+
+    # Partition candidates into contiguous batches (one per worker).
+    batch_size = math.ceil(len(candidates) / effective_workers)
+    batches: list[list[dict]] = [
+        candidates[i : i + batch_size]
+        for i in range(0, len(candidates), batch_size)
+    ]
+
+    # --- Parallel scoring ---
+    all_scored: list[tuple] = []   # (sort_key, features, score) from all workers
+
+    with ProcessPoolExecutor(
+        max_workers=effective_workers,
+        initializer=_worker_init,
+        initargs=(
+            title_taxonomy,
+            industry_taxonomy,
+            tier_a,
+            tier_b,
+            tier_c,
+            semantic_cache,
+            jd_embedding,
+            today,
+        ),
+    ) as executor:
+        futures = {executor.submit(score_batch, batch): i for i, batch in enumerate(batches)}
+        for future in as_completed(futures):
+            batch_results = future.result()   # list of (key, features, score)
+            all_scored.extend(batch_results)
+
+    # --- Top-K heap (main process, identical to serial implementation) ---
+    heap: list[tuple] = []
+
+    for key, features, score in all_scored:
+        if top_k > 0 and len(heap) < top_k:
+            heapq.heappush(heap, (key, features, score))
+        elif top_k > 0 and key > heap[0][0]:
+            heapq.heapreplace(heap, (key, features, score))
+
+    # Sort descending — highest score first.
+    sorted_entries = sorted(heap, key=lambda entry: entry[0], reverse=True)
+
+    # --- Explanation generation + result assembly (main process only) ---
     results: list[RankedCandidate] = []
     for rank_idx, (_, features, score) in enumerate(sorted_entries, start=1):
         explanation = generate_explanation(features, score)

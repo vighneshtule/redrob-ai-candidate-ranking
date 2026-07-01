@@ -277,36 +277,13 @@ def _build_alias_index(
 # Skill matching
 # ---------------------------------------------------------------------------
 
-def _match_skill_to_tier(
-    skill_name: str,
+def _match_skill_to_tier_norm(
+    norm: str,
     alias_index: dict[str, str],
 ) -> Optional[str]:
     """
-    Match a single raw skill name against a tier alias index.
-
-    Strategy (in priority order):
-    1. Direct normalised lookup in alias_index (fastest, most precise).
-    2. Substring containment — check if normalised skill appears as a
-       substring of any alias, or vice versa.
-
-    Returns the canonical tier name if matched, else None.
-
-    Parameters
-    ----------
-    skill_name : str
-        Raw skill name from candidate profile.
-    alias_index : dict[str, str]
-        Pre-built alias → canonical name index.
-
-    Returns
-    -------
-    str or None
-        Canonical skill name if matched, None otherwise.
+    Match a pre-normalised skill name against a tier alias index.
     """
-    if not skill_name:
-        return None
-
-    norm = normalize_skill(skill_name)
     if not norm:
         return None
 
@@ -315,10 +292,8 @@ def _match_skill_to_tier(
         return alias_index[norm]
 
     # --- Strategy 2: Substring containment ---
-    # Check if norm is a substring of any alias key, or vice versa
     for alias_norm, canonical in alias_index.items():
         if alias_norm and (norm in alias_norm or alias_norm in norm):
-            # Guard against very short partial matches (< 4 chars)
             if len(min(norm, alias_norm, key=len)) >= 4:
                 return canonical
 
@@ -396,23 +371,27 @@ def _match_candidate_skills(
         name = skill_dict.get("name", "")
         if not name:
             continue
+            
+        norm = normalize_skill(name)
+        if not norm:
+            continue
 
         # Try Tier A first (highest priority)
-        canonical = _match_skill_to_tier(name, idx_a)
+        canonical = _match_skill_to_tier_norm(norm, idx_a)
         if canonical and canonical not in all_matched:
             tier_a_matches[canonical] = skill_dict
             all_matched.add(canonical)
             continue
 
         # Try Tier B
-        canonical = _match_skill_to_tier(name, idx_b)
+        canonical = _match_skill_to_tier_norm(norm, idx_b)
         if canonical and canonical not in all_matched:
             tier_b_matches[canonical] = skill_dict
             all_matched.add(canonical)
             continue
 
         # Try Tier C
-        canonical = _match_skill_to_tier(name, idx_c)
+        canonical = _match_skill_to_tier_norm(norm, idx_c)
         if canonical and canonical not in all_matched:
             tier_c_matches[canonical] = skill_dict
             all_matched.add(canonical)
@@ -595,23 +574,6 @@ def _compute_assessment_score(
     """
     Compute an aggregate assessment score using skill_assessment_scores
     from redrob_signals.
-
-    Only skills that are matched to Tier A or Tier B are considered.
-    Tier A skills weighted 2×, Tier B 1×.
-
-    If no assessment data is available, returns a neutral default (0.60).
-
-    Parameters
-    ----------
-    candidate : dict
-        Full candidate record.
-    tier_a_matches, tier_b_matches : dict[str, dict]
-        Matched skills per tier.
-
-    Returns
-    -------
-    float
-        Assessment quality score in [0.0, 1.0].
     """
     signals = candidate.get("redrob_signals") or {}
     assessments: dict = signals.get("skill_assessment_scores") or {}
@@ -619,20 +581,39 @@ def _compute_assessment_score(
     if not assessments:
         return 0.40  # neutral default — no data available
 
+    # Pre-compute lookups to avoid O(N) dict traversals and normalize_skill calls per matched skill
+    assessments_lower = {k.lower().strip(): float(v) for k, v in assessments.items()}
+    assessments_norm = {}
+    for k, v in assessments.items():
+        norm_k = normalize_skill(k)
+        if norm_k:
+            assessments_norm[norm_k] = float(v)
+
+    def _find_score(raw_name: str, canonical: str) -> Optional[float]:
+        for key in (raw_name, canonical):
+            if key in assessments:
+                return float(assessments[key])
+            key_lower = key.lower().strip()
+            if key_lower in assessments_lower:
+                return assessments_lower[key_lower]
+            key_norm = normalize_skill(key)
+            if key_norm in assessments_norm:
+                return assessments_norm[key_norm]
+        return None
+
     weighted_sum = 0.0
     total_weight = 0.0
 
     for canonical, skill_dict in tier_a_matches.items():
         raw_name = skill_dict.get("name", canonical)
-        # Try matching assessment by raw name or canonical name
-        score = _find_assessment_score(raw_name, canonical, assessments)
+        score = _find_score(raw_name, canonical)
         if score is not None:
             weighted_sum += 2.0 * _assessment_to_score(score)
             total_weight += 2.0
 
     for canonical, skill_dict in tier_b_matches.items():
         raw_name = skill_dict.get("name", canonical)
-        score = _find_assessment_score(raw_name, canonical, assessments)
+        score = _find_score(raw_name, canonical)
         if score is not None:
             weighted_sum += 1.0 * _assessment_to_score(score)
             total_weight += 1.0
@@ -641,35 +622,6 @@ def _compute_assessment_score(
         return 0.40  # no matched assessment data → neutral
 
     return round(weighted_sum / total_weight, 4)
-
-
-def _find_assessment_score(
-    raw_name: str,
-    canonical: str,
-    assessments: dict[str, float],
-) -> Optional[float]:
-    """
-    Look up an assessment score for a skill by name.
-
-    Tries: raw_name, canonical, and normalised versions of both.
-
-    Returns
-    -------
-    float or None
-    """
-    for key in (raw_name, canonical):
-        if key in assessments:
-            return float(assessments[key])
-        # Try case-insensitive lookup
-        for akey, aval in assessments.items():
-            if akey.lower().strip() == key.lower().strip():
-                return float(aval)
-        # Try normalised lookup
-        norm_key = normalize_skill(key)
-        for akey, aval in assessments.items():
-            if normalize_skill(akey) == norm_key:
-                return float(aval)
-    return None
 
 
 # ---------------------------------------------------------------------------

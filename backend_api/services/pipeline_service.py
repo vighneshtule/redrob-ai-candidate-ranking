@@ -13,13 +13,15 @@ Responsibilities
 
 from __future__ import annotations
 
+import pickle
 import time
 import logging
 import tracemalloc
-from typing import Optional
+from pathlib import Path
+from typing import Any, Optional
 
 from src.pipeline.loader import load_candidates
-from src.pipeline.ranker import rank_candidates
+from src.pipeline.ranker import rank_candidates_parallel
 from src.features.career_scorer import load_taxonomies
 from src.features.skill_scorer import load_skill_taxonomy
 from src.config import CANDIDATES_JSONL
@@ -62,6 +64,25 @@ logger.info("Preloading taxonomies...")
 title_taxonomy, industry_taxonomy = load_taxonomies()
 tier_a, tier_b, tier_c, _ = load_skill_taxonomy()
 logger.info("Taxonomies ready.")
+
+# Semantic embedding cache — preloaded once at startup alongside taxonomies.
+# Maps candidate_id -> numpy embedding array. None when the pkl is absent.
+_EMBEDDINGS_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "cache" / "candidate_embeddings.pkl"
+_semantic_cache: dict[str, Any] | None = None
+_jd_embedding: Any = None
+if _EMBEDDINGS_PATH.exists():
+    logger.info("Loading semantic embedding cache from %s ...", _EMBEDDINGS_PATH)
+    with open(_EMBEDDINGS_PATH, "rb") as _emb_f:
+        _emb_data = pickle.load(_emb_f)
+    _semantic_cache = _emb_data.get("candidates")
+    _jd_embedding = _emb_data.get("jd_embedding")
+    logger.info(
+        "Semantic cache loaded: %d candidate embeddings, jd_embedding present: %s",
+        len(_semantic_cache) if _semantic_cache else 0,
+        _jd_embedding is not None,
+    )
+else:
+    logger.warning("Semantic embedding cache not found at %s — semantic_score will be 0.0", _EMBEDDINGS_PATH)
 
 # In-memory store for the most recent ranked result — keyed by candidate_id.
 # Cleared and repopulated on each /api/rank call.
@@ -140,35 +161,24 @@ def run_pipeline(job_description: str, top_k: int = 100) -> list[CandidateRespon
     total_candidates = len(raw_candidates)
     _record_stage("Loading Dataset", time.perf_counter() - t)
 
-    # Stages 4–8: Feature extraction + ranking
-    # A generator wraps the candidate list so we can update stage progress
-    # as the ranker consumes candidates. Thresholds map to visual step numbers.
-    def _progress_stream(candidates: list) -> iter:
-        for i, c in enumerate(candidates):
-            pct = i / (total_candidates or 1)
-            if pct < 0.20:
-                global_status.current_step = 4    # Integrity
-            elif pct < 0.50:
-                global_status.current_step = 5    # Career & Skills
-            elif pct < 0.80:
-                global_status.current_step = 7    # Semantic
-            else:
-                global_status.current_step = 8    # Behavior / Ranking
-            global_status.metrics["candidatesProcessed"] = i + 1
-            yield c
-
     t = time.perf_counter()
-    ranked = rank_candidates(
-        _progress_stream(raw_candidates),
+    global_status.current_step = 5   # Feature Extraction
+    global_status.metrics["candidatesProcessed"] = 0
+    ranked = rank_candidates_parallel(
+        raw_candidates,
         title_taxonomy=title_taxonomy,
         industry_taxonomy=industry_taxonomy,
         tier_a=tier_a,
         tier_b=tier_b,
         tier_c=tier_c,
         top_k=top_k,
+        semantic_cache=_semantic_cache,
+        jd_embedding=_jd_embedding,
     )
+    global_status.metrics["candidatesProcessed"] = total_candidates
+    global_status.current_step = 8   # Behavioral / Ranking
     rank_duration = time.perf_counter() - t
-    _record_stage("Feature Extraction & Hybrid Ranking", rank_duration)
+    _record_stage("Feature Extraction & Parallel Hybrid Ranking", rank_duration)
 
     # Finalise metrics
     global_status.current_step = 9
