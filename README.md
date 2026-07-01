@@ -28,24 +28,33 @@ We built a deterministic, multi-process scoring engine that bypasses the Python 
 ## 🏗️ Architecture
 
 ```mermaid
-flowchart TD
-    A[Load JD & Candidates] --> B[Partition Batch]
-    
-    subgraph Parallel Worker Pool (ProcessPoolExecutor)
-        direction TB
-        C1[Integrity Scorer] --> C2[Career Scorer]
-        C2 --> C3[Skill Scorer]
-        C3 --> C4[Behavioral Scorer]
-        C4 --> C5[Semantic Scorer]
-    end
-    
-    B -->|Shared Taxonomies| Parallel Worker Pool
-    Parallel Worker Pool --> D[Merge & Apply Stuffing Penalty]
-    D --> E[Top-K Min-Heap]
-    E --> F[Deterministic Reasoning Generator]
-    F --> G[submission.csv / JSON API]
-```
+flowchart LR
 
+    A["Job Description"] --> C
+    B["100K Candidates"] --> C
+
+    C["Parallel Processing"]
+
+    C --> D["Career"]
+    C --> E["Skill"]
+    C --> F["Behavior"]
+    C --> G["Integrity"]
+    C --> H["Semantic"]
+
+    D --> I["Hybrid Ranking"]
+    E --> I
+    F --> I
+    G --> I
+    H --> I
+
+    I --> J["Top-K Heap"]
+
+    J --> K["Explainability"]
+
+    K --> L["Submission.csv"]
+    K --> M["FastAPI"]
+    K --> N["React Dashboard"]
+```
 ---
 
 ## ⚙️ Ranking Methodology & AI Pipeline
@@ -197,5 +206,3 @@ The output format is strictly governed by `validate_submission.py` to ensure it 
 ## 🙌 Acknowledgements
 Built for the **Redrob India Runs Data & AI Challenge**.
 
-## 📝 License
-This project is licensed under the MIT License.
